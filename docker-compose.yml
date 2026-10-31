@@ -12,6 +12,7 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=80
+      - VITE_API_URL=http://localhost:8006/api
     networks:
       - plantillawiki_network
 
@@ -31,8 +32,14 @@ services:
       mongodb:
         condition: service_healthy
     environment:
+      - APP_URL=http://localhost:8006
+      - FRONTEND_URL=http://localhost:3006
+      - DB_CONNECTION=pgsql
       - DB_HOST=plantillawiki_db
       - DB_PORT=5432
+      - DB_DATABASE=plantillawiki
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=wikitda
       - MONGODB_HOST=plantillawiki_mongo
       - MONGODB_PORT=27017
       - REDIS_HOST=plantillawiki_redis

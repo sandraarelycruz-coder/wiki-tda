@@ -27,7 +27,6 @@
 </template>
 <script setup>
 import Pagination from "./Pagination.vue";
-import { defineProps, defineEmits } from "vue";
 
 const emit = defineEmits(['update:page']);
 

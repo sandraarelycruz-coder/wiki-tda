@@ -1,116 +1,52 @@
-# Plantillas Repos - Monorepositorio
+# Wiki TDA
 
-Este proyecto es un monorepositorio gestionado con **pnpm workspaces** y **Turborepo**, diseñado para alojar múltiples aplicaciones y paquetes compartidos. Actualmente contiene una aplicación frontend en Vue.js y un backend en Laravel, todo orquestado con **Docker Compose** para facilitar el desarrollo local.
+Monorepositorio de una API Laravel y un frontend Vue 3, con servicios locales gestionados mediante Docker Compose.
 
-## 🚀 Tecnologías Principales
+## Componentes
 
-- **Gestor de paquetes:** [pnpm](https://pnpm.io/)
-- **Gestor de monorepositorio:** [Turborepo](https://turbo.build/)
-- **Frontend:** Vue.js + Vite (`apps/plantilla-front`)
-- **Backend:** Laravel 11 (`apps/plantilla`)
-- **Infraestructura local:** Docker & Docker Compose (Nginx, PHP-FPM, PostgreSQL, MongoDB, Redis)
+- `apps/plantillawiki`: API Laravel, PHP 8.4 y PostgreSQL.
+- `apps/plantillawiki-front`: frontend Vue 3 + Vite.
+- `docker-compose.yml`: frontend, PHP-FPM, Nginx, PostgreSQL, MongoDB y Redis.
 
-## 📁 Estructura del Proyecto
+## Requisitos
 
-```text
-plantillas-repos/
-├── apps/
-│   ├── plantilla/          # Backend en Laravel (API)
-│   └── plantilla-front/    # Frontend en Vue.js + Vite
-├── docker-compose.yml      # Orquestación de contenedores para desarrollo local
-├── package.json            # Dependencias globales y scripts de Turborepo
-├── pnpm-workspace.yaml     # Configuración de los workspaces de pnpm
-├── turbo.json              # Configuración de tareas de Turborepo
-└── .gitignore              # Archivos ignorados por git
-```
+- Docker y Docker Compose.
+- Node.js y pnpm para ejecutar tareas del frontend desde el host.
+- PHP y Composer si se ejecuta o prueba el backend fuera de Docker.
 
-## 🛠️ Requisitos Previos
+## Inicio con Docker
 
-Para ejecutar este proyecto en tu entorno local, necesitas tener instalado:
-
-- [Node.js](https://nodejs.org/) (v18 o superior)
-- [pnpm](https://pnpm.io/installation) (v8 o superior)
-- [Docker](https://www.docker.com/) y [Docker Compose](https://docs.docker.com/compose/)
-- [Git](https://git-scm.com/)
-
-## 🚦 Primeros Pasos
-
-### 1. Clonar el repositorio e instalar dependencias
+Desde la raíz del repositorio:
 
 ```bash
-git clone <url-del-repositorio>
-cd plantillas-repos
+docker compose up -d --build
+```
 
-# Instalar dependencias en todos los workspaces
+El contenedor PHP ejecuta las migraciones al iniciar. Las aplicaciones quedan disponibles en:
+
+- Frontend: http://localhost:3006
+- API Laravel: http://localhost:8006
+- PostgreSQL desde el host: `localhost:5439`
+
+Las credenciales de desarrollo local de PostgreSQL están definidas en `docker-compose.yml`. No reutilices esas credenciales en producción.
+
+## Comandos útiles
+
+```bash
+# Ver estado y registros de los servicios
+docker compose ps
+docker compose logs -f php nginx frontend
+
+# Ejecutar migraciones o pruebas del backend
+docker compose exec php php artisan migrate
+docker compose exec php php artisan test
+
+# Instalar dependencias JavaScript y construir el frontend
 pnpm install
+pnpm --filter plantilla-front build
+
+# Ejecutar las pruebas Laravel desde el host
+pnpm test
 ```
 
-### 2. Configurar variables de entorno
-
-Asegúrate de que los archivos `.env` estén configurados correctamente en cada aplicación.
-
-**Backend (`apps/plantilla/.env`):**
-```env
-APP_URL=http://localhost:8005
-FRONTEND_URL=http://localhost:3005
-
-DB_CONNECTION=pgsql
-DB_HOST=plantilla_db
-DB_PORT=5432
-DB_DATABASE=plantilla
-DB_USERNAME=postgres
-DB_PASSWORD=irwin
-```
-
-**Frontend (`apps/plantilla-front/.env`):**
-```env
-VITE_API_URL=http://localhost:8005/api
-```
-
-### 3. Levantar la infraestructura con Docker
-
-El proyecto utiliza Docker Compose para levantar todos los servicios necesarios (Nginx, PHP, PostgreSQL, MongoDB, Redis y el Frontend).
-
-```bash
-# Levantar los contenedores en segundo plano
-docker compose up -d
-```
-
-### 4. Ejecutar migraciones de la base de datos
-
-Una vez que los contenedores estén corriendo, ejecuta las migraciones de Laravel dentro del contenedor de PHP:
-
-```bash
-docker exec plantilla_php php artisan migrate
-```
-
-## 🌐 Acceso a las Aplicaciones
-
-Una vez que los contenedores estén en ejecución, puedes acceder a las aplicaciones en las siguientes URLs:
-
-- **Frontend (Vue.js):** [http://localhost:3005](http://localhost:3005)
-- **Backend (Laravel API):** [http://localhost:8005](http://localhost:8005)
-
-## 🏃‍♂️ Comandos Útiles (Turborepo)
-
-Turborepo está configurado para ejecutar tareas en paralelo a través de los diferentes workspaces. Puedes ejecutar estos comandos desde la raíz del proyecto:
-
-- `pnpm build`: Construye todas las aplicaciones para producción.
-- `pnpm dev`: Inicia los servidores de desarrollo (si no usas Docker para el frontend).
-- `pnpm lint`: Ejecuta el linter en todos los workspaces.
-
-## 🐳 Servicios de Docker
-
-El archivo `docker-compose.yml` define los siguientes servicios:
-
-- `frontend`: Contenedor Node.js sirviendo la aplicación Vue (Puerto 3005).
-- `nginx`: Servidor web para Laravel (Puerto 8005).
-- `php`: Contenedor PHP-FPM 8.4 para ejecutar el código de Laravel.
-- `pgsql`: Base de datos PostgreSQL 17 (Puerto expuesto 5437).
-- `mongodb`: Base de datos MongoDB 4.4 (Puerto expuesto 27018).
-- `redis`: Servidor Redis para caché y colas (Puerto expuesto 6379).
-
-## 📝 Notas Adicionales
-
-- **CORS y Autenticación:** El backend está configurado para aceptar peticiones desde `http://localhost:3005` y soporta el envío de credenciales (cookies) para la autenticación con Laravel Sanctum.
-- **Gestión de dependencias:** Al usar pnpm workspaces, las dependencias compartidas se instalan en la raíz, ahorrando espacio en disco y tiempo de instalación. Para añadir una dependencia a un workspace específico, usa: `pnpm add <paquete> --filter <nombre-del-workspace>`.
+Para ejecutar el backend fuera de Docker, copia `apps/plantillawiki/.env.example` a `apps/plantillawiki/.env`, configura las credenciales para tu entorno y consulta los comandos estándar de Laravel/Composer.

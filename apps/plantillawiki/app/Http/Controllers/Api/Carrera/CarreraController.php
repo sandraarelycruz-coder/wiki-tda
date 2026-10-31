@@ -7,6 +7,7 @@ use App\Models\Carrera;
 use App\Response\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class CarreraController extends Controller
 {
@@ -24,40 +25,39 @@ class CarreraController extends Controller
      */
     public function index(Request $request)
     {
-        //
-        try {
-            $carreras = Carrera::with(['users']);
-                if($request->has('name')){
-                $carreras->where('name','ilike','%'.$request->name.'%');
-            }
-            
-            $carrerasPaginated = $carreras->paginate(10);
+        $filters = $request->validate([
+            'name' => ['sometimes', 'string', 'max:150'],
+        ]);
 
-            $paginationData = [
-                'current_page' => $carrerasPaginated->currentPage(),
-                'last_page' => $carrerasPaginated->lastPage(),
-                'per_page' => $carrerasPaginated->perPage(),
-                'total' => $carrerasPaginated->total(),
-            ];
-            
-            $carrerasFormated = $carrerasPaginated->map(function ($carrera) {
-                return [
-                    'id' => $carrera->id,
-                    'name' => $carrera->name,
-                    'code' => $carrera->code,
-                    'estado' => $carrera->estado,
-                    'users' => $carrera->users->map(fn ($user) => [ 
-                        'id'=> $user->id,
-                        'name' => $carrera->users->name,
-                        'email' => $carrera->users->email,
-                    ]),
-                ];
-            });
-        return ApiResponse::success('listado de carreras',200, $carrerasFormated,$paginationData);
+        $query = Carrera::with('users');
 
-        } catch (\Exception $e) {
-            return ApiResponse::error('Error al obtener los carreras',500, $e->getMessage());
+        if (isset($filters['name'])) {
+            $query->whereRaw('LOWER(name) LIKE LOWER(?)', ['%' . $filters['name'] . '%']);
         }
+
+        $carrerasPaginated = $query->paginate(10);
+        $paginationData = [
+            'current_page' => $carrerasPaginated->currentPage(),
+            'last_page' => $carrerasPaginated->lastPage(),
+            'per_page' => $carrerasPaginated->perPage(),
+            'total' => $carrerasPaginated->total(),
+        ];
+
+        $carrerasFormated = $carrerasPaginated->getCollection()->map(function ($carrera) {
+            return [
+                'id' => $carrera->id,
+                'name' => $carrera->name,
+                'code' => $carrera->code,
+                'estado' => $carrera->estado,
+                'users' => $carrera->users->map(fn ($user) => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ]),
+            ];
+        });
+
+        return ApiResponse::success('Listado de carreras', 200, $carrerasFormated, $paginationData);
     }
 
     /**
@@ -65,47 +65,32 @@ class CarreraController extends Controller
      */
     public function store(Request $request)
     {
-        //
-        try {
-            $messages = [
-                'name.required'=>'Los nombres son requeridos',
-                'name.string'=>'Los nombres solo deben tener texto',
-                'code.string'=>'El código solo debe tener texto',
-                'code.unique'=>'El código ya existe'
-            ];
-            $validator = Validator::make($request->all(),[
-                'name' => 'required|string|max:150,min:3',
-                'code' => 'nullable|string|min:3|max:150|unique:carreras,code',
-            ],$messages);
-            
-            if($validator->fails()){
-                return ApiResponse::error($validator->errors()->first(),422);
-            }
+        $validator = Validator::make($request->all(), [
+            'name' => ['required', 'string', 'min:3', 'max:150'],
+            'code' => ['required', 'string', 'min:3', 'max:20', 'unique:carreras,code'],
+        ], [
+            'name.required' => 'Los nombres son requeridos',
+            'code.required' => 'El código es requerido',
+            'code.max' => 'El código no debe ser mayor que 20 caracteres.',
+            'code.unique' => 'El código ya existe',
+        ]);
 
-            //creacion carrera
-            $carrera = Carrera::create([
-                'name'=>$request->name,
-                'code'=>$request->code,
-            ]);
-
-            return ApiResponse::success('Carrera creada correctamente',201);
-        } catch (\Exception $e) {
-            //throw $th;
-            return ApiResponse::error('Error al crear la carrera '.$e->getMessage());
+        if ($validator->fails()) {
+            return ApiResponse::error($validator->errors()->first(), 422);
         }
+
+        $carrera = Carrera::create($validator->validated());
+
+        return ApiResponse::success('Carrera creada correctamente', 201, $carrera);
     }
     
 
     //obtener por id
     public function showById(Request $request, $id)
     {
-        try{
-            $carrera = Carrera::find($id);
+        $carrera = Carrera::with('users')->findOrFail($id);
 
-            return ApiResponse::success('Carrera encontrada',200,$carrera);
-        }catch (\Exception $e) {
-            return ApiResponse::error('Error al mostrar la carrera',500);
-        }
+        return ApiResponse::success('Carrera encontrada', 200, $carrera);
     }
 
 
@@ -114,31 +99,30 @@ class CarreraController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $carrera = Carrera::findOrFail($id);
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'code' => 'nullable|string',
+            'name' => ['required', 'string', 'min:3', 'max:150'],
+            'code' => [
+                'required',
+                'string',
+                'min:3',
+                'max:20',
+                Rule::unique('carreras', 'code')->ignore($carrera->id),
+            ],
         ], [
             'name.required' => 'El nombre es requerido',
+            'code.required' => 'El código es requerido',
+            'code.max' => 'El código no debe ser mayor que 20 caracteres.',
+            'code.unique' => 'El código ya existe',
         ]);
 
         if ($validator->fails()) {
             return ApiResponse::error($validator->errors()->first(), 422);
         }
-        try {
-            \DB::beginTransaction();
-            $carrera = Carrera::find($id);
-            if (!$carrera) {
-                return ApiResponse::error('Carrera no encontrada', 404);
-            }
 
-            $carrera->update($request->all());
-            \DB::commit();
+        $carrera->update($validator->validated());
 
-            return ApiResponse::success('Carrera actualizada exitosamente', 200, $carrera);
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            return ApiResponse::error('Error al actualizar la carrera: ' . $e->getMessage(), 500);
-        }
+        return ApiResponse::success('Carrera actualizada exitosamente', 200, $carrera->fresh());
     }
 
     /**
@@ -146,17 +130,10 @@ class CarreraController extends Controller
      */
     public function destroy(Request $request, $id)
     {
-        //
-        try{
-            \DB::beginTransaction();
-            $carrera = Carrera::find($id);
-            $carrera->estado = !$carrera->estado;
-            \DB::commit();
-            $carrera->save();
-            return ApiResponse::success('Estado del carrera actualizado correctamente',200,$carrera);
-        }catch (\Exception $e) {
-            return ApiResponse::error('Error al actualizar el estado del carrera',500);
-        }
+        $carrera = Carrera::findOrFail($id);
+        $carrera->estado = ! $carrera->estado;
+        $carrera->save();
 
+        return ApiResponse::success('Estado de la carrera actualizado correctamente', 200, $carrera);
     }
 }

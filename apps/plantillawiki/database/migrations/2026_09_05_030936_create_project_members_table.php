@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('project_id')->constrained('projects')->cascadeOnDelete();
             $table->foreignId('student_id')->constrained('users')->cascadeOnDelete();
             $table->boolean('is_leader')->default(false);
-            $table->primary(['project_id', 'student_id']); //hasta aca
+            $table->unique(['project_id', 'student_id']);
             $table->boolean('estado')->default(true);
             $table->timestamps();
         });
@@ -27,8 +27,7 @@ return new class extends Migration
 
     //tudent_id con cascadeOnDelete si se borra el estudiante, se elimina  todo lo de el 
 
-    //primary(['project_id', 'student_id']): igual que en article_tag son tablas pivote
-    //esto también evita que se pueda agregar al mismo estudiante dos veces al mismo proyecto
+    //El índice único evita agregar dos veces al mismo estudiante en un proyecto.
 
 
 
