@@ -40,9 +40,16 @@ class RolSeeder extends Seeder
         ];
 
         foreach ($roles as $rol) {
-            $rol = Role::create($rol);
-            if ($rol->name == 'admin') {
-                $rol->syncPermissions([
+            $role = Role::firstOrCreate(
+                [
+                    'name' => $rol['name'],
+                    'guard_name' => $rol['guard_name'],
+                ],
+                ['id' => $rol['id']]
+            );
+
+            if ($role->name == 'admin') {
+                $role->syncPermissions([
                     'create_user',
                     'edit_user',
                     'delete_user',
@@ -57,23 +64,23 @@ class RolSeeder extends Seeder
                     'view_permission',
                 ]);
             }
-            if ($rol->name == 'coordinador') {
-                $rol->syncPermissions([
+            if ($role->name == 'coordinador') {
+                $role->syncPermissions([
                     'create_user',
                     'edit_user',
                     'delete_user',
                     'view_user',
                 ]);
             }
-            if ($rol->name == 'teacher') {
-                $rol->syncPermissions([
+            if ($role->name == 'teacher') {
+                $role->syncPermissions([
                     'create_user',
                     'edit_user',
                     'view_user',
                 ]);
             }
-            if ($rol->name == 'student') {
-                $rol->syncPermissions([
+            if ($role->name == 'student') {
+                $role->syncPermissions([
                     'view_user',
                 ]);
             }

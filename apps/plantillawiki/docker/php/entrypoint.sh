@@ -12,19 +12,18 @@ echo "==> Configurando permisos de Laravel..."
 set_laravel_permissions
 
 echo "==> Instalando dependencias de Composer..."
-composer install --no-interaction --prefer-dist --optimize-autoloader
+if [ ! -f vendor/autoload.php ]; then
+    composer install --no-interaction --prefer-dist --optimize-autoloader
+else
+    echo "==> Dependencias de Composer ya instaladas; se omite la instalación."
+fi
 
-echo "==> Verificando APP_KEY..."
-php artisan key:generate --no-interaction 2>/dev/null || true
-
-echo "==> Limpiando cache de configuracion..."
-php artisan config:clear
-
-echo "==> Corriendo migraciones..."
-php artisan migrate --force
-
-echo "==> Reaplicando permisos de Laravel..."
-set_laravel_permissions
+if [ -z "${APP_KEY:-}" ] && ! grep -qE '^APP_KEY=.+$' .env 2>/dev/null; then
+    echo "==> Generando APP_KEY..."
+    php artisan key:generate --no-interaction
+else
+    echo "==> APP_KEY ya configurada; se omite la generación."
+fi
 
 echo "==> Iniciando PHP-FPM..."
 exec php-fpm

@@ -3,8 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Hash;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Seeder;
+
 
 class UserSeeder extends Seeder
 {
@@ -13,40 +14,44 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        $user = User::create([
-            'name' => 'admin',
-            'email' => 'admin@gmail.com',
-            'password' => Hash::make('Admin1234'),
-            'role' => 'admin',
-        ]);
+        $users = [
+            [
+                'name' => 'admin',
+                'email' => 'admin@gmail.com',
+                'password' => 'Admin1234',
+                'role' => 'admin',
+            ],
+            [
+                'name' => 'coordinador',
+                'email' => 'coordinador@gmail.com',
+                'password' => 'Coordinador1234',
+                'role' => 'coordinador',
+            ],
+            [
+                'name' => 'teacher',
+                'email' => 'teacher@gmail.com',
+                'password' => 'Teacher1234',
+                'role' => 'teacher',
+            ],
+            [
+                'name' => 'student',
+                'email' => 'student@gmail.com',
+                'password' => 'Student1234',
+                'role' => 'student',
+            ],
+        ];
 
-        $user->assignRole('admin');
+        foreach ($users as $data) {
+            $user = User::updateOrCreate(
+                ['email' => $data['email']],
+                [
+                    'name' => $data['name'],
+                    'password' => Hash::make($data['password']),
+                    'role' => $data['role'],
+                ]
+            );
 
-        $user = User::create([
-            'name' => 'coordinador',
-            'email' => 'coordinador@gmail.com',
-            'password' => Hash::make('Coordinador1234'),
-            'role' => 'coordinador',
-        ]);
-
-        $user->assignRole('coordinador');
-
-        $user = User::create([
-            'name' => 'teacher',
-            'email' => 'teacher@gmail.com',
-            'password' => Hash::make('Teacher1234'),
-            'role' => 'teacher',
-        ]);
-
-        $user->assignRole('teacher');
-
-        $user = User::create([
-            'name' => 'student',
-            'email' => 'student@gmail.com',
-            'password' => Hash::make('Student1234'),
-            'role' => 'student',
-        ]);
-
-        $user->assignRole('student');
+            $user->syncRoles([$data['role']]);
+        }
     }
 }
